@@ -1,0 +1,66 @@
+{
+  "title": "Simple HUD with Swift Protocols",
+  "cells": [
+    {
+      "type": "text",
+      "data": "Source:&nbsp;<a href=\"https://david.y4ng.fr/simple-hud-with-swift-protocols/\">https://david.y4ng.fr/simple-hud-with-swift-protocols/</a>"
+    },
+    {
+      "type": "text",
+      "data": "<div><p>First, let's define a <code>Loadable</code> protocol.</p></div>"
+    },
+    {
+      "type": "code",
+      "language": "swift",
+      "data": "protocol Loadable {\n    func showLoadingView()\n    func hideLoadingView()\n}"
+    },
+    {
+      "type": "text",
+      "data": "<p>To begin with, we need to define a custom view for our HUD that we will simply call <code>LoadingView</code>.</p>\n<p>In my implementation, it will be a view with a translucent black background, rounded corners and will contain a <code>UIActivityIndicatorView</code> in its center.</p>"
+    },
+    {
+      "type": "code",
+      "language": "swift",
+      "data": "final class LoadingView: UIView {\n    private let activityIndicatorView = UIActivityIndicatorView(activityIndicatorStyle: .whiteLarge)\n    \n    override func layoutSubviews() {\n        super.layoutSubviews()\n        \n        backgroundColor = UIColor.black.withAlphaComponent(0.7)\n        layer.cornerRadius = 5\n        \n        if activityIndicatorView.superview == nil {\n            addSubview(activityIndicatorView)\n            \n            activityIndicatorView.translatesAutoresizingMaskIntoConstraints = false\n            activityIndicatorView.centerXAnchor.constraint(equalTo: centerXAnchor).isActive = true\n            activityIndicatorView.centerYAnchor.constraint(equalTo: centerYAnchor).isActive = true\n            activityIndicatorView.startAnimating()\n        }\n    }\n    \n    public func animate() {\n        activityIndicatorView.startAnimating()\n    }\n}"
+    },
+    {
+      "type": "text",
+      "data": "<p>Now, we can define the default <code>Loadable</code> implementation for UIViewController that will display our <code>LoadingView</code>.</p>\n<p>What's nice with Swift protocol is that we can write the implementation of <code>Loadable</code> for any <code>UIViewController</code> <strong>outside of this latter</strong>. In other words, we don't have to write the implementation of <code>Loadable</code> in an extension of our <code>UIViewController</code> or its subclasses, we just have to make sure our <code>UIViewController</code> and/or its subclasses conforms to <code>Loadable</code> and put its implementation in a protocol extension.</p>"
+    },
+    {
+      "type": "code",
+      "language": "swift",
+      "data": "fileprivate struct Constants {\n    /// an arbitrary tag id for the loading view, so it can be retrieved later without keeping a reference to it\n    fileprivate static let loadingViewTag = 1234\n}\n\n/// Default implementation for UIViewController\nextension Loadable where Self: UIViewController {\n    \n    func showLoadingView() {\n        self.view.isUserInteractionEnabled = false\n        let loadingView = LoadingView()\n        view.addSubview(loadingView)\n        \n        loadingView.translatesAutoresizingMaskIntoConstraints = false\n        loadingView.widthAnchor.constraint(equalToConstant: 100).isActive = true\n        loadingView.heightAnchor.constraint(equalToConstant: 100).isActive = true\n        loadingView.centerXAnchor.constraint(equalTo: view.centerXAnchor).isActive = true\n        loadingView.centerYAnchor.constraint(equalTo: view.centerYAnchor).isActive = true\n        loadingView.animate()\n        \n        loadingView.tag = Constants.loadingViewTag\n    }\n    \n    func hideLoadingView() {\n        self.view.isUserInteractionEnabled = true\n        view.subviews.forEach { subview in\n            if subview.tag == Constants.loadingViewTag {\n                subview.removeFromSuperview()\n            }\n        }\n    }\n}"
+    },
+    {
+      "type": "text",
+      "data": "<p>Done! Any UIViewController or its subclasses can now show or hide a LoadingView! 🎉</p>\n<p>Here is a sample code example:</p>"
+    },
+    {
+      "type": "code",
+      "language": "swift",
+      "data": "class MyViewController: UIViewController, Loadable {\n    override func viewDidAppear(_ animated: Bool) {\n        super.viewDidAppear(animated)\n        \n        showLoadingView()\n        DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + .seconds(3)) {\n            /// ... 3 seconds later\n            self.hideLoadingView()\n        }\n    }\n}"
+    },
+    {
+      "type": "text",
+      "data": "<img src=\"quiver-image-url/B43027F2375F1C3A8AACA023F9A2B03E.png\" alt=\"Снимок экрана 2019-11-01 в 13.14.48.png\" width=\"799\" height=\"448\">"
+    },
+    {
+      "type": "text",
+      "data": "<h3 id=\"uitableviewcell\">UITableViewCell</h3><p>Now let's say you have a UITableView with a list of items. When you tap on a row, you want to fetch data <strong>before</strong> doing any other action (eg: presenting or pushing a new screen).</p>\n<p>Your task can take a few seconds and you don't want your interface to appear frozen. So you need to display a <code>UIActivityIndicatorView</code> for the selected cell only.</p>\n<p>Since it's a UITableViewCell, we can do it by simply setting an instance of <code>UIActivityIndicatorView</code> as our cell's accessory view.</p>\n<p>Which is exactly what we'll be doing in the following example.</p>\n<pre class=\" language-swift\"><code class=\" language-swift\"><span class=\"token keyword\"></span></code></pre>"
+    },
+    {
+      "type": "code",
+      "language": "swift",
+      "data": "final public class CustomTableViewCell: UITableViewCell { }\n\nextension CustomTableViewCell: Loadable {\n    func showLoadingView() {\n        let activityIndicatorView = UIActivityIndicatorView(activityIndicatorStyle: .gray)\n        accessoryView = activityIndicatorView\n        activityIndicatorView.startAnimating()\n    }\n    \n    func hideLoadingView() {\n        accessoryView = nil\n    }\n}"
+    },
+    {
+      "type": "text",
+      "data": "<img src=\"quiver-image-url/5797CEBF666A8B3ECB3AE13D5E503230.png\" alt=\"spinner_tableviewcell.png\" width=\"826\" height=\"263\">"
+    },
+    {
+      "type": "text",
+      "data": "<h3 id=\"togofurther\">To go further...</h3>\n<p>We did it with a UIViewController and a UITableViewCell. It can easily be done with any custom views.</p>\n<p>In our examples, we could have done even cleaner by:</p>\n<ul>\n<li>implementing the default <code>Loadable</code> behaviors for UIView and changing the implementation for UIViewController so it will call its view's <code>Loadable</code> protocol implementation</li>\n<li>chosing to call an external dependency (MBProgressHUD or anything \nthat looks like it) as the default implementation for UIViewController</li>\n</ul>\n<h3 id=\"andbeyond\">... and beyond</h3>\n<p>The great thing with a protocol is that it can be related to anything... What about ARKit?</p>"
+    }
+  ]
+}
